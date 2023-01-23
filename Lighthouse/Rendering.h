@@ -12,7 +12,7 @@ typedef struct {
 	float aspect;
 } camera;
 
-void TransformObjects(object objects[4], object currObjects[4], object worldObjects[4], camera &view, point& reflector, float boatAngle, int cameraType);
+void TransformObjects(object objects[4], object currObjects[4], object worldObjects[4], camera &view, point& reflector, float boatAngle, int cameraType, float angle);
 void DrawObjects(object objects[4], object worldObjects[4], camera view, point reflector, unsigned char* texture, int shadingType);
 void DrawTriangle(std::vector<AET> aets, int color, unsigned char* texture, float* zBuffer);
 void DrawTriangleGouraud(std::vector<AET> aets, unsigned char* texture, float* zBuffer);

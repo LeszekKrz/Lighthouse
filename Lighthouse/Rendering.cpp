@@ -4,7 +4,7 @@
 const int VIT1 = 51;
 const int VIT2 = 106;
 
-void TransformObjects(object objects[4], object currObjects[4], object worldObjects[4], camera &view, point &reflector, float boatAngle, int cameraType)
+void TransformObjects(object objects[4], object currObjects[4], object worldObjects[4], camera &view, point &reflector, float boatAngle, int cameraType, float angle)
 {
 	float4x4 scaleM;
 	float4x4 moveM;
@@ -17,6 +17,7 @@ void TransformObjects(object objects[4], object currObjects[4], object worldObje
 	float4 lookFrom = lookAt - float4(5, -1, 0, 0);
 	reflector.coordinates = lookAt;
 	reflector.normal = normalize(float3(2, -1, 0));
+	reflector.normal = transform(reflector.normal, make_float4x4_rotation_y(angle));
 
 
 	scaleM = make_float4x4_scale(40);
@@ -330,10 +331,10 @@ int CalculateColor(point _point, int objColor, camera view, float3 light, point 
 		cosinus = dot(Li, N);
 		if (cosinus < 0) cosinus = 0;
 		R = normalize(2 * cosinus * N - Li);
-		//resultChannel += kd * cosinus * channel;
+		resultChannel += kd * cosinus * channel;
 		cosinus = dot(R, V);
 		if (cosinus < 0) cosinus = 0;
-		//resultChannel += ks * pow(cosinus, alfa) * channel;
+		resultChannel += ks * pow(cosinus, alfa) * channel;
 
 		Li = normalize(float3(reflector.coordinates.x, reflector.coordinates.y, reflector.coordinates.z) - coos);
 		cosinus = dot(Li, N);
@@ -341,10 +342,10 @@ int CalculateColor(point _point, int objColor, camera view, float3 light, point 
 		R = normalize(2 * cosinus * N - Li);
 		reflectorCosinus = pow(dot(-reflector.normal, Li), 5);
 		if (reflectorCosinus < 0) reflectorCosinus = 0;
-		resultChannel += kd * cosinus * channel * reflectorCosinus;
+		resultChannel += kd * cosinus * channel * reflectorCosinus * 3;
 		cosinus = dot(R, V);
 		if (cosinus < 0) cosinus = 0;
-		resultChannel += ks * pow(cosinus, alfa) * channel * reflectorCosinus;
+		resultChannel += ks * pow(cosinus, alfa) * channel * reflectorCosinus * 3;
 
 		if (resultChannel > 1) resultChannel = 1;
 		if (resultChannel < 0) resultChannel = 0;

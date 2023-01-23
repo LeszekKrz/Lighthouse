@@ -40,6 +40,8 @@ int main(int argc, char* argv[])
 	float angle = 0;
 	float currStep = step;
 
+	float refAngle = 0;
+	float refStep = M_PI / 180;
 	int cameraType = 0;
 	int shadingType = 0;
 
@@ -99,8 +101,9 @@ int main(int argc, char* argv[])
 		if (paused) currStep = 0;
 		else currStep = step;
 		angle += currStep;
+		refAngle += refStep;
 		memset(pixels, 0, width * height * 3);
-		TransformObjects(objects, currObjects, worldObjects, view, reflector, angle, cameraType);
+		TransformObjects(objects, currObjects, worldObjects, view, reflector, angle, cameraType, refAngle);
 		DrawObjects(currObjects, worldObjects, view, reflector, pixels, shadingType);
 
 		SDL_UpdateTexture(texture, NULL, pixels, width * 3);
