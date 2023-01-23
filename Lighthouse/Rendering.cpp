@@ -4,7 +4,7 @@
 const int VIT1 = 51;
 const int VIT2 = 106;
 
-void TransformObjects(object objects[4], object currObjects[4], object worldObjects[4], camera &view, float boatAngle, int cameraType)
+void TransformObjects(object objects[4], object currObjects[4], object worldObjects[4], camera &view, point &reflector, float boatAngle, int cameraType)
 {
 	float4x4 scaleM;
 	float4x4 moveM;
@@ -15,6 +15,8 @@ void TransformObjects(object objects[4], object currObjects[4], object worldObje
 	//float4 lookAt = objects[1].triangles.at(51).vertices[2].coordinates + float4(0, 0.2, 0, 0);
 	float4 lookAt = objects[1].triangles.at(51).vertices[2].coordinates;
 	float4 lookFrom = lookAt - float4(5, -1, 0, 0);
+	reflector.coordinates = lookAt;
+	reflector.normal = normalize(float3(2, -1, 0));
 
 
 	scaleM = make_float4x4_scale(40);
@@ -26,6 +28,8 @@ void TransformObjects(object objects[4], object currObjects[4], object worldObje
 	worldObjects[1] = objects[1] * scaleM * moveM * rotateM;
 	lookAt = transform(lookAt,scaleM * moveM * rotateM);
 	lookFrom = transform(lookFrom,scaleM * moveM * rotateM);
+	reflector.coordinates = transform(reflector.coordinates, scaleM * moveM * rotateM);
+	reflector.normal = normalize(transform_normal(reflector.normal, scaleM * moveM * rotateM));
 
 	scaleM = make_float4x4_scale(62.5);
 	moveM = make_float4x4_translation(float3(50, 0, 0));
@@ -57,10 +61,6 @@ void TransformObjects(object objects[4], object currObjects[4], object worldObje
 	
 	viewM = make_float4x4_look_at(view.currOrigin, view.currAim, float3(0, 1, 0));
 
-	//float4 lookFrom = currObjects[1].triangles.at(51).vertices[2].coordinates;
-	//float4 lookAt = currObjects[1].triangles.at(106).vertices[2].coordinates;
-	//float4 lookFrom = lookAt - float4(20, 0, 0, 0);
-
 	projectionM = make_float4x4_perspective_field_of_view(view.fov, view.aspect, view.n, view.f);
 	for (int i = 0; i < 4; i++)
 	{
@@ -69,7 +69,7 @@ void TransformObjects(object objects[4], object currObjects[4], object worldObje
 	
 }
 
-void DrawObjects(object objects[4], object worldObjects[4], camera view, unsigned char* texture, int shadingType)
+void DrawObjects(object objects[4], object worldObjects[4], camera view, point reflector, unsigned char* texture, int shadingType)
 {
 	int x,y;
 	unsigned char* pixel;
@@ -84,7 +84,7 @@ void DrawObjects(object objects[4], object worldObjects[4], camera view, unsigne
 		{
 			_triangle = PrepareForScreen(objects[k].triangles.at(i), 800, 800);
 			worldTriangle = worldObjects[k].triangles.at(i);
-			//if (k == 3 && (_triangle.vertices[0].coordinates.y < 300 || _triangle.vertices[1].coordinates.y < 300 || _triangle.vertices[2].coordinates.y < 300)) continue;
+			if (k == 3 && (_triangle.vertices[0].coordinates.y < 0 || _triangle.vertices[1].coordinates.y < 0 || _triangle.vertices[2].coordinates.y < 0)) continue;
 			if (!VisibleTriangle(_triangle)) continue;
 			if (BackPlane(worldTriangle, view)) continue;
 			float4 middle43 = worldTriangle.vertices[0].coordinates + worldTriangle.vertices[1].coordinates + worldTriangle.vertices[2].coordinates;
@@ -96,7 +96,7 @@ void DrawObjects(object objects[4], object worldObjects[4], camera view, unsigne
 			switch (shadingType)
 			{
 			case 0:
-				color = CalculateColor(middle, objects[k].color, view, light);
+				color = CalculateColor(middle, objects[k].color, view, light, reflector);
 				PrepareAET(_triangle, aets);
 				DrawTriangle(aets, color, texture, zBuff);
 				break;
@@ -104,14 +104,14 @@ void DrawObjects(object objects[4], object worldObjects[4], camera view, unsigne
 				int colors[3];
 				for (int i = 0; i < 3; i++)
 				{
-					colors[i] = CalculateColor(worldTriangle.vertices[i], objects[k].color, view, light);
+					colors[i] = CalculateColor(worldTriangle.vertices[i], objects[k].color, view, light, reflector);
 				}
 				PrepareAETwithColors(_triangle, aets, colors);
 				DrawTriangleGouraud(aets, texture, zBuff);
 				break;
 			case 2:
 				PrepareAETwithPoints(_triangle, worldTriangle, aets);
-				DrawTrianglePhong(aets, objects[k].color, view, light, texture, zBuff);
+				DrawTrianglePhong(aets, objects[k].color, view, light, reflector, texture, zBuff);
 				break;
 			default:
 				break;
@@ -239,7 +239,7 @@ void DrawTriangleGouraud(std::vector<AET> aets, unsigned char* texture, float* z
 	}
 }
 
-void DrawTrianglePhong(std::vector<AET> aets, int objColor, camera view, float3 light, unsigned char* texture, float* zBuffer)
+void DrawTrianglePhong(std::vector<AET> aets, int objColor, camera view, float3 light, point reflector, unsigned char* texture, float* zBuffer)
 {
 	int x;
 	unsigned char* pixel;
@@ -283,7 +283,7 @@ void DrawTrianglePhong(std::vector<AET> aets, int objColor, camera view, float3 
 					if (z < zBuffer[from.y * 800 + x])
 					{
 						pixel = texture + from.y * 800 * 3 + x * 3;
-						color = CalculateColor(p, objColor, view, light);
+						color = CalculateColor(p, objColor, view, light, reflector);
 						*pixel = (color >> 16) & 255;
 						*(pixel + 1) = (color >> 8) & 255;
 						*(pixel + 2) = color & 255;
@@ -304,32 +304,47 @@ void DrawTrianglePhong(std::vector<AET> aets, int objColor, camera view, float3 
 	}
 }
 
-int CalculateColor(point _point, int objColor, camera view, float3 light)
+int CalculateColor(point _point, int objColor, camera view, float3 light, point reflector)
 {
 	int color = 0;
 	float ks = 0.5;
 	float kd = 0.5;
 	float ka = 0.5;
 	int alfa = 5;
-	float Ia = 0;
+	float Ia = 0.2;
+	float ref;
 	float3 coos = float3(_point.coordinates.x, _point.coordinates.y, _point.coordinates.z);
-	float3 Li = normalize(light - coos);
+	float3 Li; 
 	float3 N = normalize(_point.normal);
 	float3 V = normalize(view.currOrigin - coos);
-	float3 R = normalize(2 * dot(Li, N) * N - Li);
+	float3 R; 
 	float channel;
 	float resultChannel;
 	float cosinus;
+	float reflectorCosinus;
 	for (int i = 0; i < 3; i++)
 	{
+		Li = normalize(light - coos);
 		channel = ((float)((objColor >> i * 8) & 255)) / 255;
 		resultChannel = ka * Ia;
 		cosinus = dot(Li, N);
 		if (cosinus < 0) cosinus = 0;
-		resultChannel += kd * cosinus * channel;
+		R = normalize(2 * cosinus * N - Li);
+		//resultChannel += kd * cosinus * channel;
 		cosinus = dot(R, V);
 		if (cosinus < 0) cosinus = 0;
-		resultChannel += ks * pow(cosinus, alfa) * channel;
+		//resultChannel += ks * pow(cosinus, alfa) * channel;
+
+		Li = normalize(float3(reflector.coordinates.x, reflector.coordinates.y, reflector.coordinates.z) - coos);
+		cosinus = dot(Li, N);
+		if (cosinus < 0) cosinus = 0;
+		R = normalize(2 * cosinus * N - Li);
+		reflectorCosinus = pow(dot(-reflector.normal, Li), 5);
+		if (reflectorCosinus < 0) reflectorCosinus = 0;
+		resultChannel += kd * cosinus * channel * reflectorCosinus;
+		cosinus = dot(R, V);
+		if (cosinus < 0) cosinus = 0;
+		resultChannel += ks * pow(cosinus, alfa) * channel * reflectorCosinus;
 
 		if (resultChannel > 1) resultChannel = 1;
 		if (resultChannel < 0) resultChannel = 0;

@@ -36,7 +36,7 @@ int main(int argc, char* argv[])
 
 	bool running = true;
 
-	float step = M_PI / 90;
+	float step = M_PI / 720;
 	float angle = 0;
 	float currStep = step;
 
@@ -47,6 +47,8 @@ int main(int argc, char* argv[])
 
 	Uint32 start, end;
 	//float fps;
+
+	point reflector;
 	
 	while (running)
 	{
@@ -96,11 +98,10 @@ int main(int argc, char* argv[])
 		}
 		if (paused) currStep = 0;
 		else currStep = step;
-		std::cout << currStep << std::endl;
 		angle += currStep;
-		memset(pixels, 255, width * height * 3);
-		TransformObjects(objects, currObjects, worldObjects, view, angle, cameraType);
-		DrawObjects(currObjects, worldObjects, view, pixels, shadingType);
+		memset(pixels, 0, width * height * 3);
+		TransformObjects(objects, currObjects, worldObjects, view, reflector, angle, cameraType);
+		DrawObjects(currObjects, worldObjects, view, reflector, pixels, shadingType);
 
 		SDL_UpdateTexture(texture, NULL, pixels, width * 3);
 		SDL_RenderCopy(renderer, texture, NULL, NULL);

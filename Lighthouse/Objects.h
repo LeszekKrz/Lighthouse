@@ -45,7 +45,6 @@ typedef struct AET {
 	float3 colorT;
 	point from;
 	point to;
-
 };
 
 triangle PrepareForScreen(triangle _triangle, int width, int height);
