@@ -38,12 +38,12 @@ point point::operator*=(float4x4 matrix)
 
 bool point::operator<(float3 than)
 {
-	return coordinates.x < than.x && coordinates.y < than.y && coordinates.x < than.z;
+	return coordinates.x < than.x && coordinates.y < than.y;
 }
 
 bool point::operator>=(float3 than)
 {
-	return coordinates.x >= than.x && coordinates.y >= than.y && coordinates.x >= than.z;
+	return coordinates.x >= than.x && coordinates.y >= than.y;
 }
 
 point point::operator+(point other)
@@ -85,6 +85,14 @@ AET MakeAET(float4 u, float4 v)
 	else aet.m = (v.x - u.x) / (v.y - u.y);
 	aet.from = u;
 	aet.to = v;
+	return aet;
+}
+
+AET MakeAETwithColors(float4 u, float4 v, float3 cu, float3 cv)
+{
+	AET aet = MakeAET(u, v);
+	aet.colorF = cu;
+	aet.colorT = cv;
 	return aet;
 }
 
@@ -175,6 +183,116 @@ void PrepareAET(triangle _triangle, std::vector<AET> &aets)
 	return;
 }
 
+void PrepareAETwithColors(triangle _triangle, std::vector<AET>& aets, int colors[3])
+{
+	float a, b, c;
+	float3 ca, cb, cc;
+	float4 min, mid, max;
+	float3 cmin, cmid, cmax;
+	a = _triangle.vertices[0].coordinates.y;
+	b = _triangle.vertices[1].coordinates.y;
+	c = _triangle.vertices[2].coordinates.y;
+	ca = decodeColor(colors[0]);
+	cb = decodeColor(colors[1]);
+	cc = decodeColor(colors[2]);
+	
+	
+	if (a < b)
+	{
+		if (a < c)
+		{
+			min = _triangle.vertices[0].coordinates;
+			cmin = ca;
+			if (b < c)
+			{
+				mid = _triangle.vertices[1].coordinates;
+				cmid = cb;
+				max = _triangle.vertices[2].coordinates;
+				cmax = cc;
+			}
+			else
+			{
+				mid = _triangle.vertices[2].coordinates;
+				cmid = cc;
+				max = _triangle.vertices[1].coordinates;
+				cmax = cb;
+			}
+		}
+		else
+		{
+			min = _triangle.vertices[2].coordinates;
+			cmin = cc;
+			mid = _triangle.vertices[0].coordinates;
+			cmid = ca;
+			max = _triangle.vertices[1].coordinates;
+			cmax = cb;
+		}
+
+	}
+	else
+	{
+		if (b < c)
+		{
+			min = _triangle.vertices[1].coordinates;
+			cmin = cb;
+			if (a < c)
+			{
+				mid = _triangle.vertices[0].coordinates;
+				cmid = ca;
+				max = _triangle.vertices[2].coordinates;
+				cmax = cc;
+			}
+			else
+			{
+				mid = _triangle.vertices[2].coordinates;
+				cmid = cc;
+				max = _triangle.vertices[0].coordinates;
+				cmax = ca;
+			}
+		}
+		else
+		{
+			min = _triangle.vertices[2].coordinates;
+			cmin = cc;
+			mid = _triangle.vertices[1].coordinates;
+			cmid = cb;
+			max = _triangle.vertices[0].coordinates;
+			cmax = ca;
+		}
+	}
+	int miny = min.y;
+	int midy = mid.y;
+	int maxy = max.y;
+	AET minMid = MakeAETwithColors(min, mid, cmin, cmid);
+	AET minMax = MakeAETwithColors(min, max, cmin, cmax);
+	if (miny == midy)
+	{
+		if (min.x < mid.x)
+		{
+			aets.push_back(minMax);
+			aets.push_back(MakeAETwithColors(mid, max, cmid, cmax));
+		}
+		else
+		{
+			aets.push_back(MakeAETwithColors(mid, max, cmid, cmax));
+			aets.push_back(minMax);
+		}
+		return;
+	}
+	if (minMid.m < minMax.m)
+	{
+		if (midy != miny) aets.push_back(MakeAETwithColors(min, mid, cmin, cmid));
+		if (maxy != miny) aets.push_back(MakeAETwithColors(min, max, cmin, cmax));
+	}
+	else
+	{
+		if (maxy != miny) aets.push_back(MakeAETwithColors(min, max, cmin, cmax));
+		if (midy != miny) aets.push_back(MakeAETwithColors(min, mid, cmin, cmid));
+	}
+	if (maxy != miny) aets.push_back(MakeAETwithColors(mid, max, cmid, cmax));
+	return;
+}
+
 void StepAET(AET& aet)
 {
 	aet.y++;
@@ -185,6 +303,17 @@ float zInterp(AET aet)
 {
 	float ratio = ((float)(aet.y - aet.yStart)) / (aet.maxY - aet.yStart);
 	return aet.from.z * (1 - ratio) + aet.to.z * (ratio);
+}
+
+float3 colorInterp(AET aet)
+{
+	float ratio = ((float)(aet.y - aet.yStart)) / (aet.maxY - aet.yStart);
+	return lerp(aet.colorF, aet.colorT, ratio);
+}
+
+float3 decodeColor(int color)
+{
+	return float3((color >> 16) & 255, (color >> 8) & 255, color & 255);
 }
 
 

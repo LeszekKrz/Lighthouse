@@ -15,7 +15,7 @@ void ImportScene(object objects[4])
 	objects[2] = ImportObject("ScaledIsland.obj");
 	objects[2].color = 255 << 8;
 
-	objects[3] = ImportObject("ScaledSea.obj");
+	objects[3] = ImportObject("ScaledOcean.obj");
 	objects[3].color = 255;
 }
 

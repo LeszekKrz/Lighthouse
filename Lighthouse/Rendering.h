@@ -15,5 +15,7 @@ typedef struct {
 void TransformObjects(object objects[4], object currObjects[4], object worldObjects[4], camera &view, float boatAngle, int cameraType);
 void DrawObjects(object objects[4], object worldObjects[4], camera view, unsigned char* texture);
 void DrawTriangle(std::vector<AET> aets, int color, unsigned char* texture, float* zBuffer);
+void DrawTriangleGouraud(std::vector<AET> aets, unsigned char* texture, float* zBuffer);
 int CalculateColor(point _point, int objColor, camera view, float3 light);
 bool VisibleTriangle(triangle _triangle);
+bool BackPlane(triangle _triangle, camera view);
