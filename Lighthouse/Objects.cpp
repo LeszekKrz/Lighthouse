@@ -83,8 +83,8 @@ AET MakeAET(float4 u, float4 v)
 	aet.maxY = (int)v.y;
 	if (v.y == u.y) aet.m = 0;
 	else aet.m = (v.x - u.x) / (v.y - u.y);
-	aet.from = u;
-	aet.to = v;
+	aet.zFrom = u.z;
+	aet.zTo = v.z;
 	return aet;
 }
 
@@ -93,6 +93,14 @@ AET MakeAETwithColors(float4 u, float4 v, float3 cu, float3 cv)
 	AET aet = MakeAET(u, v);
 	aet.colorF = cu;
 	aet.colorT = cv;
+	return aet;
+}
+
+AET MakeAETwithPoints(float4 u, float4 v, point p1, point p2)
+{
+	AET aet = MakeAET(u, v);
+	aet.from = p1;
+	aet.to = p2;
 	return aet;
 }
 
@@ -293,6 +301,117 @@ void PrepareAETwithColors(triangle _triangle, std::vector<AET>& aets, int colors
 	return;
 }
 
+void PrepareAETwithPoints(triangle _triangle, triangle worldTriangle, std::vector<AET>& aets)
+{
+	float a, b, c;
+	point pa, pb, pc;
+	float4 min, mid, max;
+	point pmin, pmid, pmax;
+	a = _triangle.vertices[0].coordinates.y;
+	b = _triangle.vertices[1].coordinates.y;
+	c = _triangle.vertices[2].coordinates.y;
+	pa = worldTriangle.vertices[0];
+	pb = worldTriangle.vertices[1];
+	pc = worldTriangle.vertices[2];
+
+
+
+	if (a < b)
+	{
+		if (a < c)
+		{
+			min = _triangle.vertices[0].coordinates;
+			pmin = pa;
+			if (b < c)
+			{
+				mid = _triangle.vertices[1].coordinates;
+				pmid = pb;
+				max = _triangle.vertices[2].coordinates;
+				pmax = pc;
+			}
+			else
+			{
+				mid = _triangle.vertices[2].coordinates;
+				pmid = pc;
+				max = _triangle.vertices[1].coordinates;
+				pmax = pb;
+			}
+		}
+		else
+		{
+			min = _triangle.vertices[2].coordinates;
+			pmin = pc;
+			mid = _triangle.vertices[0].coordinates;
+			pmid = pa;
+			max = _triangle.vertices[1].coordinates;
+			pmax = pb;
+		}
+
+	}
+	else
+	{
+		if (b < c)
+		{
+			min = _triangle.vertices[1].coordinates;
+			pmin = pb;
+			if (a < c)
+			{
+				mid = _triangle.vertices[0].coordinates;
+				pmid = pa;
+				max = _triangle.vertices[2].coordinates;
+				pmax = pc;
+			}
+			else
+			{
+				mid = _triangle.vertices[2].coordinates;
+				pmid = pc;
+				max = _triangle.vertices[0].coordinates;
+				pmax = pa;
+			}
+		}
+		else
+		{
+			min = _triangle.vertices[2].coordinates;
+			pmin = pc;
+			mid = _triangle.vertices[1].coordinates;
+			pmid = pb;
+			max = _triangle.vertices[0].coordinates;
+			pmax = pa;
+		}
+	}
+	int miny = min.y;
+	int midy = mid.y;
+	int maxy = max.y;
+	AET minMid = MakeAETwithPoints(min, mid, pmin, pmid);
+	AET minMax = MakeAETwithPoints(min, max, pmin, pmax);
+	if (miny == midy)
+	{
+		if (min.x < mid.x)
+		{
+			aets.push_back(minMax);
+			aets.push_back(MakeAETwithPoints(mid, max, pmid, pmax));
+		}
+		else
+		{
+			aets.push_back(MakeAETwithPoints(mid, max, pmid, pmax));
+			aets.push_back(minMax);
+		}
+		return;
+	}
+	if (minMid.m < minMax.m)
+	{
+		if (midy != miny) aets.push_back(MakeAETwithPoints(min, mid, pmin, pmid));
+		if (maxy != miny) aets.push_back(MakeAETwithPoints(min, max, pmin, pmax));
+	}
+	else
+	{
+		if (maxy != miny) aets.push_back(MakeAETwithPoints(min, max, pmin, pmax));
+		if (midy != miny) aets.push_back(MakeAETwithPoints(min, mid, pmin, pmid));
+	}
+	if (maxy != miny) aets.push_back(MakeAETwithPoints(mid, max, pmid, pmax));
+	return;
+}
+
 void StepAET(AET& aet)
 {
 	aet.y++;
@@ -302,7 +421,7 @@ void StepAET(AET& aet)
 float zInterp(AET aet)
 {
 	float ratio = ((float)(aet.y - aet.yStart)) / (aet.maxY - aet.yStart);
-	return aet.from.z * (1 - ratio) + aet.to.z * (ratio);
+	return aet.zFrom * (1 - ratio) + aet.zTo * (ratio);
 }
 
 float3 colorInterp(AET aet)
@@ -311,9 +430,18 @@ float3 colorInterp(AET aet)
 	return lerp(aet.colorF, aet.colorT, ratio);
 }
 
+
+
 float3 decodeColor(int color)
 {
 	return float3((color >> 16) & 255, (color >> 8) & 255, color & 255);
+}
+
+point pointInterp(AET aet)
+{
+	float ratio = ((float)(aet.y - aet.yStart)) / (aet.maxY - aet.yStart);
+	point inter = { lerp(aet.from.coordinates, aet.to.coordinates, ratio), lerp(aet.from.normal, aet.to.normal, ratio) };
+	return inter;
 }
 
 

@@ -12,8 +12,9 @@ void TransformObjects(object objects[4], object currObjects[4], object worldObje
 	float4x4 viewM;
 	float4x4 projectionM; 
 
-	float4 lookAt = objects[1].triangles.at(51).vertices[2].coordinates + float4(0, 0.2, 0, 0);
-	float4 lookFrom = lookAt - float4(5, 0, 0, 0);
+	//float4 lookAt = objects[1].triangles.at(51).vertices[2].coordinates + float4(0, 0.2, 0, 0);
+	float4 lookAt = objects[1].triangles.at(51).vertices[2].coordinates;
+	float4 lookFrom = lookAt - float4(5, -1, 0, 0);
 
 
 	scaleM = make_float4x4_scale(40);
@@ -68,7 +69,7 @@ void TransformObjects(object objects[4], object currObjects[4], object worldObje
 	
 }
 
-void DrawObjects(object objects[4], object worldObjects[4], camera view, unsigned char* texture)
+void DrawObjects(object objects[4], object worldObjects[4], camera view, unsigned char* texture, int shadingType)
 {
 	int x,y;
 	unsigned char* pixel;
@@ -77,12 +78,13 @@ void DrawObjects(object objects[4], object worldObjects[4], camera view, unsigne
 	float* zBuff = (float*)malloc(800*800*sizeof(float));
 	std::fill(zBuff, zBuff + 800 * 800, 20000.0f);
 	int color;
-	for (int k = 0; k < 3; k++)
+	for (int k = 0; k < 4; k++)
 	{
 		for (int i = 0; i < objects[k].triangles.size(); i++)
 		{
 			_triangle = PrepareForScreen(objects[k].triangles.at(i), 800, 800);
 			worldTriangle = worldObjects[k].triangles.at(i);
+			//if (k == 3 && (_triangle.vertices[0].coordinates.y < 300 || _triangle.vertices[1].coordinates.y < 300 || _triangle.vertices[2].coordinates.y < 300)) continue;
 			if (!VisibleTriangle(_triangle)) continue;
 			if (BackPlane(worldTriangle, view)) continue;
 			float4 middle43 = worldTriangle.vertices[0].coordinates + worldTriangle.vertices[1].coordinates + worldTriangle.vertices[2].coordinates;
@@ -90,27 +92,29 @@ void DrawObjects(object objects[4], object worldObjects[4], camera view, unsigne
 			float3 middleN = (worldTriangle.vertices[0].normal + worldTriangle.vertices[1].normal + worldTriangle.vertices[2].normal) / 3;
 			point middle = (worldTriangle.vertices[0] + worldTriangle.vertices[1] + worldTriangle.vertices[2]) / 3;
 			std::vector<AET> aets;
-			//color = CalculateColor(middle, objects[k].color, view, float3(0, 100, 0));
-			//PrepareAET(_triangle, aets);
-			//DrawTriangle(aets, color, texture, zBuff);
-			int colors[3];
-			for (int i = 0; i < 3; i++)
+			float3 light = float3(100, 100, 0);
+			switch (shadingType)
 			{
-				colors[i] = CalculateColor(worldTriangle.vertices[i], objects[k].color, view, float3(0, 100, 0));
-			}
-			PrepareAETwithColors(_triangle, aets, colors);
-			DrawTriangleGouraud(aets, texture, zBuff);
-			for (int j = 0; j < 3; j++)
-			{
-				float4 coos = _triangle.vertices[j].coordinates;
-				x = (int)coos.x;
-				y = (int)coos.y;
-				//if (x < 0 || x >= 800 || y < 0 || y >= 800 || coos.z < -1 || coos.z >= 1) continue;
-				if (x < 0 || x >= 800 || y < 0 || y >= 800) continue;
-				pixel = texture + (y) * 800 * 3 + x * 3;
-				*pixel = 0;
-				*(pixel + 1) = 0;
-				*(pixel + 2) = 0;
+			case 0:
+				color = CalculateColor(middle, objects[k].color, view, light);
+				PrepareAET(_triangle, aets);
+				DrawTriangle(aets, color, texture, zBuff);
+				break;
+			case 1:
+				int colors[3];
+				for (int i = 0; i < 3; i++)
+				{
+					colors[i] = CalculateColor(worldTriangle.vertices[i], objects[k].color, view, light);
+				}
+				PrepareAETwithColors(_triangle, aets, colors);
+				DrawTriangleGouraud(aets, texture, zBuff);
+				break;
+			case 2:
+				PrepareAETwithPoints(_triangle, worldTriangle, aets);
+				DrawTrianglePhong(aets, objects[k].color, view, light, texture, zBuff);
+				break;
+			default:
+				break;
 			}
 		}
 	}
@@ -235,6 +239,71 @@ void DrawTriangleGouraud(std::vector<AET> aets, unsigned char* texture, float* z
 	}
 }
 
+void DrawTrianglePhong(std::vector<AET> aets, int objColor, camera view, float3 light, unsigned char* texture, float* zBuffer)
+{
+	int x;
+	unsigned char* pixel;
+	bool finished = true;
+	float z, z1, z2;
+	float q;
+	point p1, p2, p;
+	int color;
+	if (aets.size() > 0)
+	{
+		AET from = aets.at(0);
+		AET to = aets.at(1);
+		do
+		{
+			while (from.y != from.maxY && to.y != to.maxY)
+			{
+				if (from.y < 0 || from.y >= 800)
+				{
+					StepAET(from);
+					StepAET(to);
+					continue;
+				}
+				z1 = zInterp(from);
+				z2 = zInterp(to);
+				p1 = pointInterp(from);
+				p2 = pointInterp(to);
+				for (int x = (int)from.x; x <= (int)to.x; x++)
+				{
+					if (x < 0 || x >= 800) continue;
+					if (to.x == from.x)
+					{
+						z = z1;
+						p = p1;
+					}
+					else
+					{
+						q = ((float)(x - from.x)) / (to.x - from.x);
+						z = z1 * (1 - q) + z2 * q;
+						p = { lerp(p1.coordinates, p2.coordinates, q), normalize(lerp(p1.normal, p2.normal, q)) };
+					};
+					if (z < zBuffer[from.y * 800 + x])
+					{
+						pixel = texture + from.y * 800 * 3 + x * 3;
+						color = CalculateColor(p, objColor, view, light);
+						*pixel = (color >> 16) & 255;
+						*(pixel + 1) = (color >> 8) & 255;
+						*(pixel + 2) = color & 255;
+						zBuffer[from.y * 800 + x] = z;
+					}
+				}
+				StepAET(from);
+				StepAET(to);
+			}
+			if (!finished) break;
+			if (aets.size() > 2)
+			{
+				if (from.y == from.maxY) from = aets.at(2);
+				else to = aets.at(2);
+				finished = false;
+			}
+		} while (!finished);
+	}
+}
+
 int CalculateColor(point _point, int objColor, camera view, float3 light)
 {
 	int color = 0;
@@ -250,12 +319,17 @@ int CalculateColor(point _point, int objColor, camera view, float3 light)
 	float3 R = normalize(2 * dot(Li, N) * N - Li);
 	float channel;
 	float resultChannel;
+	float cosinus;
 	for (int i = 0; i < 3; i++)
 	{
 		channel = ((float)((objColor >> i * 8) & 255)) / 255;
 		resultChannel = ka * Ia;
-		resultChannel += kd * dot(Li, N) * channel;
-		resultChannel += ks * pow(dot(R, V), alfa) * channel;
+		cosinus = dot(Li, N);
+		if (cosinus < 0) cosinus = 0;
+		resultChannel += kd * cosinus * channel;
+		cosinus = dot(R, V);
+		if (cosinus < 0) cosinus = 0;
+		resultChannel += ks * pow(cosinus, alfa) * channel;
 
 		if (resultChannel > 1) resultChannel = 1;
 		if (resultChannel < 0) resultChannel = 0;

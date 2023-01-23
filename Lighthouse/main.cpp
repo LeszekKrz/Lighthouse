@@ -36,11 +36,14 @@ int main(int argc, char* argv[])
 
 	bool running = true;
 
-	float step = M_PI / 720;
+	float step = M_PI / 90;
 	float angle = 0;
 	float currStep = step;
 
 	int cameraType = 0;
+	int shadingType = 0;
+
+	bool paused = false;
 
 	Uint32 start, end;
 	//float fps;
@@ -63,8 +66,26 @@ int main(int argc, char* argv[])
 				break;
 			case SDLK_p:
 				std::cout << "p\n";
-				if (currStep) currStep = 0;
-				else currStep = step;
+				if (paused) paused = false;
+				else paused = true;
+				break;
+			case SDLK_s:
+				std::cout << "s\n";
+				shadingType = (shadingType + 1) % 3;
+				switch (shadingType)
+				{
+				case 0:
+					step = M_PI / 720;
+					break;
+				case 1:
+					step = M_PI / 360;
+					break;
+				case 2:
+					step = M_PI / 90;
+					break;
+				default:
+					break;
+				}
 				break;
 			default:
 				break;
@@ -73,10 +94,13 @@ int main(int argc, char* argv[])
 		default:
 			break;
 		}
+		if (paused) currStep = 0;
+		else currStep = step;
+		std::cout << currStep << std::endl;
 		angle += currStep;
 		memset(pixels, 255, width * height * 3);
 		TransformObjects(objects, currObjects, worldObjects, view, angle, cameraType);
-		DrawObjects(currObjects, worldObjects, view, pixels);
+		DrawObjects(currObjects, worldObjects, view, pixels, shadingType);
 
 		SDL_UpdateTexture(texture, NULL, pixels, width * 3);
 		SDL_RenderCopy(renderer, texture, NULL, NULL);
