@@ -117,6 +117,18 @@ void DrawObjects(object objects[4], object worldObjects[4], camera view, point r
 			default:
 				break;
 			}
+			for (int j = 0; j < 3; j++)
+			{
+				float4 coos = _triangle.vertices[j].coordinates;
+				coos /= coos.w;
+				if (coos.x < -1 || coos.y < -1 || coos.z < -1 || coos.x > 1 || coos.y > 1 || coos.z > 1) continue;
+				x = (int)((coos.x + 1) / 2 * 800);
+				y = (int)((-coos.y + 1) / 2 * 800);
+				pixel = texture + (y) * 800 * 3 + x * 3;
+				*pixel = 0;
+				//*(pixel + 1) = 0;
+				//*(pixel + 2) = 0;
+			}
 		}
 	}
 	free(zBuff);
@@ -323,6 +335,7 @@ int CalculateColor(point _point, int objColor, camera view, float3 light, point 
 	float resultChannel;
 	float cosinus;
 	float reflectorCosinus;
+	float3 interColor;
 	for (int i = 0; i < 3; i++)
 	{
 		Li = normalize(light - coos);
@@ -351,6 +364,17 @@ int CalculateColor(point _point, int objColor, camera view, float3 light, point 
 		if (resultChannel < 0) resultChannel = 0;
 		color |= ((int)(resultChannel * 255) & 255) << i * 8;
 	}
+	interColor = decodeColor(color);
+	float d = length(view.currOrigin - coos);
+	if (d > 50)
+	{
+		if (d > 200) interColor = float3(200, 200, 200);
+		else
+		{
+			interColor = lerp(interColor, float3(200, 200, 200), (d - 50) / 150);
+		}
+	}
+	color = encodeColor(interColor);
 	return color;
 }
 

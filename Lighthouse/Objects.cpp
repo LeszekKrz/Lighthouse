@@ -437,6 +437,11 @@ float3 decodeColor(int color)
 	return float3((color >> 16) & 255, (color >> 8) & 255, color & 255);
 }
 
+int encodeColor(float3 color)
+{
+	return ((int)color.x << 16) | ((int)color.y << 8) | (int)color.z;
+}
+
 point pointInterp(AET aet)
 {
 	float ratio = ((float)(aet.y - aet.yStart)) / (aet.maxY - aet.yStart);

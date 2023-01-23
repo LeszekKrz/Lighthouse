@@ -21,8 +21,14 @@ int main(int argc, char* argv[])
 	SDL_Texture* texture = SDL_CreateTexture(renderer, SDL_PIXELFORMAT_RGB24, SDL_TEXTUREACCESS_STATIC, width, height);
 
 	unsigned char* pixels = (unsigned char*)malloc(width * height * 3);
-	memset(pixels, 255, width * height * 3);
-
+	if (pixels != NULL)
+	{
+		memset(pixels, 255, width * height * 3);
+	}
+	else 
+	{
+		std::cout << "malloc failed\n";
+	}
 	
 	object objects[4];
 	object currObjects[4];
@@ -51,6 +57,8 @@ int main(int argc, char* argv[])
 	//float fps;
 
 	point reflector;
+
+	int grey = (200 << 16) | (200 << 8) | 200;
 	
 	while (running)
 	{
@@ -102,7 +110,7 @@ int main(int argc, char* argv[])
 		else currStep = step;
 		angle += currStep;
 		refAngle += refStep;
-		memset(pixels, 0, width * height * 3);
+		memset(pixels, grey, width * height * 3);
 		TransformObjects(objects, currObjects, worldObjects, view, reflector, angle, cameraType, refAngle);
 		DrawObjects(currObjects, worldObjects, view, reflector, pixels, shadingType);
 

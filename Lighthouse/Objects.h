@@ -58,4 +58,5 @@ void StepAET(AET& aet);
 float zInterp(AET aet);
 float3 colorInterp(AET aet);
 float3 decodeColor(int color);
+int encodeColor(float3 color);
 point pointInterp(AET aet);
