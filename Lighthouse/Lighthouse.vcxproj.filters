@@ -43,16 +43,16 @@
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
-    <Object Include="FinalIsland.obj">
+    <Object Include="ScaledBoat.obj">
       <Filter>Object Files</Filter>
     </Object>
-    <Object Include="FinalLighthouse.obj">
+    <Object Include="ScaledIsland.obj">
       <Filter>Object Files</Filter>
     </Object>
-    <Object Include="FinalSea.obj">
+    <Object Include="ScaledLighthouse.obj">
       <Filter>Object Files</Filter>
     </Object>
-    <Object Include="FinalBoat.obj">
+    <Object Include="ScaledSea.obj">
       <Filter>Object Files</Filter>
     </Object>
   </ItemGroup>

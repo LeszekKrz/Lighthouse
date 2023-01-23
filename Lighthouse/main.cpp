@@ -26,20 +26,23 @@ int main(int argc, char* argv[])
 	
 	object objects[4];
 	object currObjects[4];
+	object worldObjects[4];
 	ImportScene(objects);
 
-	camera view = { float3(0, 120, 200), float3(0, 0, 0), 1, 1000, M_PI / 4, 1 };
+	//camera view = { float3(150, 50, 0), float3(0, 0, 0), float3(0,0,0), float3(0,0,0), 1, 1000, M_PI / 4, 1 };
+	camera view = { float3(0, 120, 120), float3(0, 0, 0), float3(0,0,0), float3(0,0,0), 50, 200, M_PI / 4, 1 };
 
 	SDL_Event event;
 
 	bool running = true;
 
-	float step = M_PI / 980;
+	float step = M_PI / 720;
 	float angle = 0;
+	float currStep = step;
 
 	int cameraType = 0;
 
-	//Uint32 start, end;
+	Uint32 start, end;
 	//float fps;
 	
 	while (running)
@@ -58,6 +61,11 @@ int main(int argc, char* argv[])
 				std::cout << "k\n";
 				cameraType = (cameraType + 1) % 3;
 				break;
+			case SDLK_p:
+				std::cout << "p\n";
+				if (currStep) currStep = 0;
+				else currStep = step;
+				break;
 			default:
 				break;
 			}
@@ -65,18 +73,20 @@ int main(int argc, char* argv[])
 		default:
 			break;
 		}
-		angle += step;
+		angle += currStep;
 		memset(pixels, 255, width * height * 3);
-		TransformObjects(objects, currObjects, view, angle, cameraType);
-		DrawObjects(currObjects, pixels);
+		TransformObjects(objects, currObjects, worldObjects, view, angle, cameraType);
+		DrawObjects(currObjects, worldObjects, view, pixels);
 
 		SDL_UpdateTexture(texture, NULL, pixels, width * 3);
 		SDL_RenderCopy(renderer, texture, NULL, NULL);
 
 		SDL_RenderPresent(renderer);
+
 		//end = SDL_GetTicks();
 		//fps = 1000.0f / (end - start);
 		//std::cout << fps << std::endl;
+		//std::cout << end - start << std::endl;
 	}
 
 	free(pixels);

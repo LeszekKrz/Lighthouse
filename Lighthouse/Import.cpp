@@ -15,7 +15,7 @@ void ImportScene(object objects[4])
 	objects[2] = ImportObject("ScaledIsland.obj");
 	objects[2].color = 255 << 8;
 
-	objects[3] = ImportObject("FinalSea.obj");
+	objects[3] = ImportObject("ScaledSea.obj");
 	objects[3].color = 255;
 }
 
@@ -75,6 +75,7 @@ object ImportObject(std::string filename)
 			getline(inds, index, '/');
 			getline(inds, index, '/');
 			float3 na = normals.at(stoi(index) - 1);
+			_triangle.vertices[0] = { a,na };
 
 			getline(stream, value, ' ');
 			inds = stringstream(value);
@@ -84,6 +85,7 @@ object ImportObject(std::string filename)
 			getline(inds, index, '/');
 			getline(inds, index, '/');
 			float3 nb = normals.at(stoi(index) - 1);
+			_triangle.vertices[1] = { b, nb };
 
 			getline(stream, value, ' ');
 			inds = stringstream(value);
@@ -93,53 +95,7 @@ object ImportObject(std::string filename)
 			getline(inds, index, '/');
 			getline(inds, index, '/');
 			float3 nc = normals.at(stoi(index) - 1);
-
-			if (a.x < b.x)
-			{
-				if (a.x < c.x)
-				{
-					_triangle.vertices[0] = { a, na };
-					if (b.x < c.x)
-					{
-						_triangle.vertices[1] = { b, nb };
-						_triangle.vertices[2] = { c, nc };
-					}
-					else
-					{
-						_triangle.vertices[1] = { c, nc };
-						_triangle.vertices[2] = { b,nb };
-					}
-				}
-				else
-				{
-					_triangle.vertices[0] = { c, nc };
-					_triangle.vertices[1] = { a, na };
-					_triangle.vertices[2] = { b, nb };
-				}
-			}
-			else
-			{
-				if (b.x < c.x)
-				{
-					_triangle.vertices[0] = { b, nb };
-					if (a.x < c.x)
-					{
-						_triangle.vertices[1] = { a,na };
-						_triangle.vertices[2] = { c, nc };
-					}
-					else
-					{
-						_triangle.vertices[1] = { c,nc };
-						_triangle.vertices[2] = { a,na };
-					}
-				}
-				else
-				{
-					_triangle.vertices[0] = {c, nc};
-					_triangle.vertices[1] = {b, nb};
-					_triangle.vertices[2] = {a, na};
-				}
-			}
+			_triangle.vertices[2] = { c,nc };
 
 			triangles.push_back(_triangle);
 		}
